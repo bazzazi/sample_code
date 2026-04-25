@@ -1,4 +1,4 @@
-name: Download Latest Gadgetbridge (Correct APK)
+name: Download Gadgetbridge via gitsnipe
 
 on:
   workflow_dispatch:
@@ -7,21 +7,13 @@ jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Download from Official F-Droid Repository
+      - name: Download using gitsnipe
         run: |
-          # دانلود مستقیم با استفاده از لینک صحیح (قابل اطمینان‌ترین روش)
-          curl -L -o Gadgetbridge.apk https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_910.apk
-          
-          # بررسی اینکه حجم فایل کمتر از 1 مگ نباشد (ادعای دانلود واقعی)
-          if [ $(stat -c%s Gadgetbridge.apk) -lt 1048576 ]; then
-            echo "Error: Downloaded file size is too small (Download failed)"
-            exit 1
-          fi
-          
-          echo "✓ Download successful! File size: $(ls -lh Gadgetbridge.apk)"
+          npx rjsr @sigmasd/gitsnipe https://codeberg.org/Freeyourgadget/Gadgetbridge .
+          ls -la
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Gadgetbridge-v0.90.0
-          path: Gadgetbridge.apk
+          name: gadgetbridge-files
+          path: .

@@ -10,12 +10,12 @@ jobs:
       contents: write  # اجازه نوشتن در مخزن
     
     steps:
-      - name: Checkout repo
+      - name: Checkout repo (your repository)
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Checkout source code
+      - name: Checkout Gadgetbridge source
         run: |
           git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
       
@@ -34,18 +34,62 @@ jobs:
         run: |
           cd Gadgetbridge
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
       
-      - name: Copy APK to repo
+      - name: Find and copy APK files
         run: |
-          # کپی کردن فایل APK به ریشه مخزن
-          cp Gadgetbridge/app/build/outputs/apk/release/*.apk ./Gadgetbridge.apk
-          ls -la
+          # پیدا کردن همه فایل‌های APK
+          find ./Gadgetbridge -name "*.apk" -type f
+          
+          # کپی کردن به ریشه مخزن
+          find ./Gadgetbridge -name "*.apk" -exec cp {} ./ \;
+          
+          # تغییر نام فایل‌ها به نام‌های ساده
+          for file in *.apk; do
+            if [[ -f "$file" ]]; then
+              if [[ "$file" == *"banglejs"* ]]; then
+                mv "$file" "Gadgetbridge-Banglejs.apk" 2>/dev/null || true
+              elif [[ "$file" == *"mainline"* ]]; then
+                mv "$file" "Gadgetbridge-Mainline.apk" 2>/dev/null || true
+              else
+                mv "$file" "Gadgetbridge.apk" 2>/dev/null || true
+              fi
+            fi
+          done
+          
+          echo "=== فایل‌های آماده برای آپلود ==="
+          ls -la *.apk 2>/dev/null || echo "هیچ فایل APK ای پیدا نشد!"
       
-      - name: Commit and Push
+      - name: Commit and Push to Repository
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Gadgetbridge.apk
-          git commit -m "Add Gadgetbridge APK" || echo "No changes to commit"
-          git push
+          
+          # اضافه کردن فایل‌های APK
+          git add *.apk 2>/dev/null || echo "No APK files to add"
+          
+          # چک کردن برای commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add Gadgetbridge APK - built on $(date '+%Y-%m-%d %H:%M:%S')"
+            git push
+            echo "✅ فایل‌ها با موفقیت به مخزن اضافه شدند!"
+          fi
+      
+      - name: Show download links
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ لینک‌های دانلود مستقیم:"
+          echo "=========================================="
+          echo ""
+          echo "نسخه Mainline:"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Mainline.apk"
+          echo ""
+          echo "نسخه Banglejs:"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Banglejs.apk"
+          echo ""
+          echo "نسخه معمولی:"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge.apk"
+          echo "=========================================="

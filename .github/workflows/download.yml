@@ -1,4 +1,4 @@
-name: Build Gadgetbridge Simple
+name: Build and Commit APK to Repo
 
 on:
   workflow_dispatch:
@@ -6,10 +6,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # اجازه نوشتن در مخزن
     
     steps:
-      - name: Checkout
-        run: git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Checkout source code
+        run: |
+          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
       
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -22,14 +30,22 @@ jobs:
         with:
           packages: 'platforms;android-34'
       
-      - name: Build
+      - name: Build APK
         run: |
           cd Gadgetbridge
           chmod +x gradlew
           ./gradlew assembleRelease
       
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: gadgetbridge
-          path: Gadgetbridge/app/build/outputs/apk/release/*.apk
+      - name: Copy APK to repo
+        run: |
+          # کپی کردن فایل APK به ریشه مخزن
+          cp Gadgetbridge/app/build/outputs/apk/release/*.apk ./Gadgetbridge.apk
+          ls -la
+      
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Gadgetbridge.apk
+          git commit -m "Add Gadgetbridge APK" || echo "No changes to commit"
+          git push

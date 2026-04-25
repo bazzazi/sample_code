@@ -13,7 +13,7 @@ jobs:
       - name: Download from GitHub Releases
         run: |
           # دانلود مستقیم از آینه گیت‌هاب (بدون نیاز به Codeberg)
-          wget https://github.com/Freeyourgadget/Gadgetbridge/releases/download/0.90.0/Gadgetbridge-0.90.0.apk
+          wget https://www.openapk.net/download/246/nodomain.freeyourgadget.gadgetbridge
       
       - name: Upload as Artifact
         uses: actions/upload-artifact@v4

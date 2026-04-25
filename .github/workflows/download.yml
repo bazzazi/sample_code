@@ -1,19 +1,13 @@
-name: Download APK from F-Droid and Commit to Repo
+name: Download Gadgetbridge from OpenAPK
 
 on:
   workflow_dispatch:
-    inputs:
-      download_url:
-        description: 'لینک دانلود APK از F-Droid'
-        required: true
-        default: 'https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_910.apk'
-        type: string
 
 jobs:
   download:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # اجازه نوشتن در مخزن
+      contents: write
     
     steps:
       - name: Checkout repository
@@ -21,59 +15,34 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Download APK from F-Droid
+      - name: Download from OpenAPK
         run: |
-          echo "⬇️ دانلود فایل از: ${{ inputs.download_url }}"
+          echo "⬇️ دانلود Gadgetbridge از OpenAPK..."
+          curl -L -o Gadgetbridge.apk "https://www.openapk.net/download/246/nodomain.freeyourgadget.gadgetbridge"
           
-          # دانلود فایل با curl و دنبال کردن ریدایرکت‌ها
-          curl -L -o Gadgetbridge.apk "${{ inputs.download_url }}"
-          
-          # بررسی حجم فایل (باید بیشتر از 1 مگابایت باشد)
+          # بررسی حجم فایل
           FILE_SIZE=$(stat -c%s Gadgetbridge.apk)
-          echo "📦 حجم فایل دانلود شده: $((FILE_SIZE / 1024 / 1024)) MB"
+          echo "📦 حجم فایل: $((FILE_SIZE / 1024 / 1024)) MB"
           
-          if [ $FILE_SIZE -lt 1048576 ]; then
-            echo "❌ خطا: حجم فایل خیلی کم است (کمتر از 1 مگابایت)"
-            echo "   احتمالاً لینک اشتباه است یا سرور خطا داده"
+          if [ $FILE_SIZE -lt 10000000 ]; then
+            echo "❌ خطا: حجم فایل خیلی کم است!"
             exit 1
           fi
           
-          echo "✅ دانلود با موفقیت انجام شد"
+          echo "✅ دانلود موفقیت‌آمیز بود"
       
-      - name: Verify APK file
-        run: |
-          # بررسی اینکه فایل واقعاً APK است
-          file_type=$(file Gadgetbridge.apk)
-          echo "نوع فایل: $file_type"
-          
-          if [[ ! "$file_type" == *"Zip archive"* ]] && [[ ! "$file_type" == *"Android"* ]]; then
-            echo "⚠️ هشدار: فایل دانلود شده可能 APK معتبر نیست"
-          fi
-      
-      - name: Commit and Push to Repository
+      - name: Commit and Push
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          # اضافه کردن فایل
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Gadgetbridge.apk
-          
-          # چک کردن برای commit
-          if git diff --staged --quiet; then
-            echo "ℹ️ تغییری برای commit وجود ندارد"
-          else
-            git commit -m "Download Gadgetbridge APK from F-Droid - $(date '+%Y-%m-%d %H:%M:%S')"
-            git push
-            echo "✅ فایل با موفقیت به مخزن اضافه شد!"
-          fi
+          git commit -m "Add Gadgetbridge APK from OpenAPK" || echo "No changes"
+          git push
+          echo "✅ فایل با موفقیت به مخزن اضافه شد"
       
       - name: Show download link
         run: |
-          echo ""
           echo "=========================================="
-          echo "✅ لینک دانلود مستقیم:"
-          echo "=========================================="
-          echo ""
+          echo "لینک دانلود مستقیم از مخزن شما:"
           echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge.apk"
-          echo ""
           echo "=========================================="

@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download from Codeberg
-        run: wget https://codeberg.org/Freeyourgadget/Gadgetbridge/releases/download/0.78.0/Gadgetbridge-0.78.0.apk
+        run: wget https://github.com/Freeyourgadget/Gadgetbridge/releases/download/0.90.0/Gadgetbridge-0.90.0.apk
       - name: Upload as Artifact
         uses: actions/upload-artifact@v4
         with:

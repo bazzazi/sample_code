@@ -1,19 +1,40 @@
-name: Download Gadgetbridge via gitsnipe
+name: Build Gadgetbridge from Source
 
 on:
   workflow_dispatch:
 
 jobs:
-  download:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Download using gitsnipe
+      - name: Checkout source code
         run: |
-          npx rjsr @sigmasd/gitsnipe https://codeberg.org/Freeyourgadget/Gadgetbridge .
-          ls -la
+          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+          cd Gadgetbridge
       
-      - name: Upload Artifact
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/android/repository/commandlinetools-linux-latest.zip
+          unzip commandlinetools-linux-latest.zip -d android-sdk
+          export ANDROID_SDK_ROOT=$(pwd)/android-sdk
+          echo "y" | ./android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-34" "build-tools;34.0.0"
+      
+      - name: Build APK
+        run: |
+          cd Gadgetbridge
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge-files
-          path: .
+          name: gadgetbridge-built
+          path: Gadgetbridge/app/build/outputs/apk/release/*.apk

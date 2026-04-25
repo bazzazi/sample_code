@@ -13,17 +13,41 @@ jobs:
       - name: Checkout repo (your repository)
         uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       
       - name: Checkout Gadgetbridge source
         run: |
-          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+          git clone --depth 1 https://codeberg.org/Freeyourgadget/Gadgetbridge.git
       
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+      
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            Gadgetbridge/.gradle
+            Gadgetbridge/build
+          key: ${{ runner.os }}-gradle-${{ hashFiles('Gadgetbridge/build.gradle', 'Gadgetbridge/app/build.gradle', 'Gadgetbridge/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk/platforms
+            /usr/local/lib/android/sdk/build-tools
+          key: ${{ runner.os }}-android-sdk-${{ hashFiles('**/build.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-
       
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -38,77 +62,49 @@ jobs:
       
       - name: Find and copy APK files
         run: |
-          # پیدا کردن همه فایل‌های APK
           echo "=== جستجوی فایل‌های APK ==="
-          find ./Gadgetbridge -name "*.apk" -type f
+          find ./Gadgetbridge -name "*.apk" -type f -exec ls -lh {} \;
           
           # کپی کردن به ریشه مخزن
           find ./Gadgetbridge -name "*.apk" -exec cp {} ./ \;
           
-          # تغییر نام فایل‌ها به نام‌های ساده
-          for file in *.apk; do
-            if [[ -f "$file" ]]; then
-              if [[ "$file" == *"banglejs"* ]]; then
-                mv "$file" "Gadgetbridge-Banglejs.apk" 2>/dev/null || true
-                echo "✅ نسخه Banglejs پیدا شد"
-              elif [[ "$file" == *"mainline"* ]]; then
-                mv "$file" "Gadgetbridge-Mainline.apk" 2>/dev/null || true
-                echo "✅ نسخه Mainline پیدا شد"
-              elif [[ "$file" == *"debug"* ]]; then
-                mv "$file" "Gadgetbridge-Debug.apk" 2>/dev/null || true
-                echo "✅ نسخه Debug پیدا شد"
-              else
-                cp "$file" "Gadgetbridge.apk" 2>/dev/null || true
-              fi
-            fi
-          done
-          
-          echo ""
+          # نمایش فایل‌های کپی شده
           echo "=== فایل‌های آماده برای آپلود ==="
           ls -la *.apk 2>/dev/null || echo "هیچ فایل APK ای پیدا نشد!"
       
-      - name: Verify APK files
-        run: |
-          for file in *.apk; do
-            if [[ -f "$file" ]]; then
-              SIZE=$(stat -c%s "$file")
-              echo "📦 $file - حجم: $((SIZE / 1024 / 1024)) MB"
-              if [ $SIZE -lt 1000000 ]; then
-                echo "⚠️ هشدار: حجم $file کمتر از 1 مگابایت است (ممکن است خراب باشد)"
-              fi
-            fi
-          done
-      
       - name: Commit and Push to Repository
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # تنظیم کاربر
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # اضافه کردن فایل‌های APK
-          git add *.apk 2>/dev/null || echo "No APK files to add"
+          # اضافه کردن فایل‌ها
+          git add -f *.apk 2>/dev/null || echo "No APK files found"
           
-          # چک کردن برای commit
+          # بررسی تغییرات
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "ℹ️ هیچ تغییر جدیدی برای commit وجود ندارد"
           else
-            git commit -m "Add Gadgetbridge Debug APK - built on $(date '+%Y-%m-%d %H:%M:%S')"
-            git push
+            # انجام commit
+            git commit -m "Add Gadgetbridge Debug APK - $(date '+%Y-%m-%d %H:%M:%S')"
+            
+            # push
+            git push -u origin main || git push origin main
             echo "✅ فایل‌ها با موفقیت به مخزن اضافه شدند!"
           fi
       
       - name: Show download links
+        if: success()
         run: |
           echo ""
           echo "=========================================="
           echo "✅ لینک‌های دانلود مستقیم:"
           echo "=========================================="
           echo ""
-          echo "📱 نسخه Mainline (برای اکثر مچ‌بندها):"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Mainline.apk"
-          echo ""
-          echo "⌚ نسخه Banglejs (مخصوص مچ‌بند Bangle.js):"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Banglejs.apk"
-          echo ""
-          echo "🔧 نسخه Debug (برای تست):"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Debug.apk"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-debug.apk"
           echo "=========================================="
+      
+      - name: Clean up Gradle cache (optional)
+        run: |
+          rm -rf ~/.gradle/caches/transforms-*
+          rm -rf ~/.gradle/caches/build-cache-*

@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Download APK from GitHub Releases
         run: |
-          wget https://github.com/Freeyourgadget/Gadgetbridge/releases/download/0.90.0/Gadgetbridge-0.90.0.apk
+          wget https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbucket_810.apk
       
       - name: Upload as Artifact
         uses: actions/upload-artifact@v4

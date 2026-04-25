@@ -1,4 +1,4 @@
-name: Build Gadgetbridge from Source
+name: Build Gadgetbridge
 
 on:
   workflow_dispatch:
@@ -6,35 +6,23 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: reactnativecommunity/react-native-android:latest
+      
     steps:
-      - name: Checkout source code
+      - name: Checkout source
         run: |
           git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
           cd Gadgetbridge
-      
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: Setup Android SDK
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip
-          wget https://dl.google.com/android/repository/commandlinetools-linux-latest.zip
-          unzip commandlinetools-linux-latest.zip -d android-sdk
-          export ANDROID_SDK_ROOT=$(pwd)/android-sdk
-          echo "y" | ./android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-34" "build-tools;34.0.0"
       
       - name: Build APK
         run: |
           cd Gadgetbridge
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge-built
+          name: gadgetbridge-apk
           path: Gadgetbridge/app/build/outputs/apk/release/*.apk

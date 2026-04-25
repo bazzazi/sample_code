@@ -1,4 +1,4 @@
-name: Download Latest Gadgetbridge APK
+name: Download Gadgetbridge from GitHub Releases
 
 on:
   workflow_dispatch:
@@ -7,22 +7,33 @@ jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Download APK from F-Droid
+      - name: Get latest release info
+        id: get_release
         run: |
-          # لینک مستقیم آخرین نسخه (arm64-v8a)
-          curl -L -o Gadgetbridge.apk https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_810.apk
+          # دریافت اطلاعات آخرین نسخه از GitHub API
+          RELEASE_INFO=$(curl -s https://api.github.com/repos/Freeyourgadget/Gadgetbridge/releases/latest)
+          # استخراج لینک دانلود فایل استاندارد
+          DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep -o "https://github.com/Freeyourgadget/Gadgetbridge/releases/download/[^\"]*Gadgetbridge-[^\"]*\.apk" | head -1)
+          echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+          echo "Found download URL: $DOWNLOAD_URL"
+      
+      - name: Download APK
+        run: |
+          curl -L -o Gadgetbridge.apk "${{ steps.get_release.outputs.url }}"
           
-          # بررسی اینکه حجم فایل دانلود شده کمتر از 100 کیلوبایت نباشد
-          if [ $(stat -c%s Gadgetbridge.apk) -lt 100000 ]; then
-            echo "Error: Downloaded file is too small (probably an error page)"
+          # بررسی حجم فایل
+          FILE_SIZE=$(stat -c%s Gadgetbridge.apk)
+          echo "File size: $FILE_SIZE bytes"
+          
+          if [ $FILE_SIZE -lt 100000 ]; then
+            echo "Error: File too small ($FILE_SIZE bytes)"
             exit 1
           fi
           
-          echo "File downloaded successfully!"
-          ls -lh Gadgetbridge.apk
+          echo "Download successful!"
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge-final
+          name: gadgetbridge
           path: Gadgetbridge.apk

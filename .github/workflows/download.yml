@@ -1,4 +1,4 @@
-name: Build Gadgetbridge
+name: Build Gadgetbridge Simple
 
 on:
   workflow_dispatch:
@@ -6,23 +6,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: reactnativecommunity/react-native-android:latest
-      
+    
     steps:
-      - name: Checkout source
-        run: |
-          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
-          cd Gadgetbridge
+      - name: Checkout
+        run: git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
       
-      - name: Build APK
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34'
+      
+      - name: Build
         run: |
           cd Gadgetbridge
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease
       
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge-apk
+          name: gadgetbridge
           path: Gadgetbridge/app/build/outputs/apk/release/*.apk

@@ -1,4 +1,4 @@
-name: Download Latest Gadgetbridge from F-Droid
+name: Download Latest Gadgetbridge APK
 
 on:
   workflow_dispatch:
@@ -7,12 +7,22 @@ jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Download latest Gadgetbridge APK
+      - name: Download APK from F-Droid
         run: |
+          # لینک مستقیم آخرین نسخه (arm64-v8a)
           curl -L -o Gadgetbridge.apk https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_810.apk
+          
+          # بررسی اینکه حجم فایل دانلود شده کمتر از 100 کیلوبایت نباشد
+          if [ $(stat -c%s Gadgetbridge.apk) -lt 100000 ]; then
+            echo "Error: Downloaded file is too small (probably an error page)"
+            exit 1
+          fi
+          
+          echo "File downloaded successfully!"
+          ls -lh Gadgetbridge.apk
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge-latest
+          name: gadgetbridge-final
           path: Gadgetbridge.apk

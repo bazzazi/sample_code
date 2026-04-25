@@ -1,4 +1,4 @@
-name: Download Gadgetbridge from OpenAPK
+name: Download Gadgetbridge from APKPure
 
 on:
   workflow_dispatch:
@@ -8,41 +8,39 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Download from OpenAPK
+
+      - name: Download from APKPure (Method A)
         run: |
-          echo "⬇️ دانلود Gadgetbridge از OpenAPK..."
-          curl -L -o Gadgetbridge.apk "https://www.openapk.net/download/246/nodomain.freeyourgadget.gadgetbridge"
-          
-          # بررسی حجم فایل
-          FILE_SIZE=$(stat -c%s Gadgetbridge.apk)
-          echo "📦 حجم فایل: $((FILE_SIZE / 1024 / 1024)) MB"
-          
-          if [ $FILE_SIZE -lt 10000000 ]; then
-            echo "❌ خطا: حجم فایل خیلی کم است!"
+          echo "Trying APKPure (Version 0.90.0)..."
+          curl -L -o Gadgetbridge.apk "https://m.apkpure.net/gadgetbridge/nodomain.freeyourgadget.gadgetbridge/download?from=details"
+          sleep 5 # منتظر میمونیم تا دانلود شروع بشه
+          ls -la Gadgetbridge.apk
+
+      - name: If APKPure fails, try APKCombo (Method B)
+        if: failure() || steps.download.outputs.status == 'failure'
+        run: |
+          echo "Trying APKCombo..."
+          curl -L -o Gadgetbridge.apk "https://apkcombo.com/gadgetbridge/nodomain.freeyourgadget.gadgetbridge/download/apk"
+          ls -la Gadgetbridge.apk
+
+      - name: Check if download worked
+        run: |
+          SIZE=$(stat -c%s Gadgetbridge.apk)
+          echo "File size: $SIZE bytes"
+          if [ $SIZE -lt 1048576 ]; then # کمتر از 1 مگ
+            echo "Download failed (file too small). Trying final fallback..."
             exit 1
           fi
-          
-          echo "✅ دانلود موفقیت‌آمیز بود"
-      
+          echo "Success!"
+
       - name: Commit and Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Gadgetbridge.apk
-          git commit -m "Add Gadgetbridge APK from OpenAPK" || echo "No changes"
+          git commit -m "Add Gadgetbridge APK (downloaded via alternative source)" || echo "No changes"
           git push
-          echo "✅ فایل با موفقیت به مخزن اضافه شد"
-      
-      - name: Show download link
-        run: |
-          echo "=========================================="
-          echo "لینک دانلود مستقیم از مخزن شما:"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge.apk"
-          echo "=========================================="

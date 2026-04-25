@@ -1,0 +1,19 @@
+name: Download Gadgetbridge
+
+on:
+  workflow_dispatch:  # با این گزینه، خودت دستی اجراش می‌کنی
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download APK from GitHub Releases
+        run: |
+          wget https://github.com/Freeyourgadget/Gadgetbridge/releases/download/0.90.0/Gadgetbridge-0.90.0.apk
+      
+      - name: Upload as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gadgetbridge-app
+          path: Gadgetbridge-0.90.0.apk

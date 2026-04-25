@@ -1,4 +1,4 @@
-name: Download Gadgetbridge
+name: Download Latest Gadgetbridge from F-Droid
 
 on:
   workflow_dispatch:
@@ -6,14 +6,13 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Download from GitHub Releases
+      - name: Download latest Gadgetbridge APK
         run: |
-          curl -L -o Gadgetbridge.apk https://github.com/Freeyourgadget/Gadgetbridge/releases/download/0.90.0/Gadgetbridge-0.90.0.apk
+          curl -L -o Gadgetbridge.apk https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_810.apk
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gadgetbridge
+          name: gadgetbridge-latest
           path: Gadgetbridge.apk

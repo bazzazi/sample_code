@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>File Downloader</title></head>
+<body>
+  <input type="text" id="fileUrl" placeholder="Enter URL" size="50" />
+  <button onclick="downloadFile()">Download</button>
+  <script>
+    async function downloadFile() {
+      const url = document.getElementById('https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbucket_810.apk').value;
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = url.split('/').pop();
+      link.click();
+    }
+  </script>
+</body>
+</html>

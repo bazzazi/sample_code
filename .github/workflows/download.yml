@@ -1,46 +1,114 @@
-name: Download Gadgetbridge from APKPure
+name: Build and Commit APK to Repo
 
 on:
   workflow_dispatch:
 
 jobs:
-  download:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout repo (your repository)
         uses: actions/checkout@v4
-
-      - name: Download from APKPure (Method A)
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Checkout Gadgetbridge source
         run: |
-          echo "Trying APKPure (Version 0.90.0)..."
-          curl -L -o Gadgetbridge.apk "https://m.apkpure.net/gadgetbridge/nodomain.freeyourgadget.gadgetbridge/download?from=details"
-          sleep 5 # منتظر میمونیم تا دانلود شروع بشه
-          ls -la Gadgetbridge.apk
-
-      - name: If APKPure fails, try APKCombo (Method B)
-        if: failure() || steps.download.outputs.status == 'failure'
+          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34'
+      
+      - name: Build Debug APK
         run: |
-          echo "Trying APKCombo..."
-          curl -L -o Gadgetbridge.apk "https://apkcombo.com/gadgetbridge/nodomain.freeyourgadget.gadgetbridge/download/apk"
-          ls -la Gadgetbridge.apk
-
-      - name: Check if download worked
+          cd Gadgetbridge
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      
+      - name: Find and copy APK files
         run: |
-          SIZE=$(stat -c%s Gadgetbridge.apk)
-          echo "File size: $SIZE bytes"
-          if [ $SIZE -lt 1048576 ]; then # کمتر از 1 مگ
-            echo "Download failed (file too small). Trying final fallback..."
-            exit 1
-          fi
-          echo "Success!"
-
-      - name: Commit and Push
+          # پیدا کردن همه فایل‌های APK
+          echo "=== جستجوی فایل‌های APK ==="
+          find ./Gadgetbridge -name "*.apk" -type f
+          
+          # کپی کردن به ریشه مخزن
+          find ./Gadgetbridge -name "*.apk" -exec cp {} ./ \;
+          
+          # تغییر نام فایل‌ها به نام‌های ساده
+          for file in *.apk; do
+            if [[ -f "$file" ]]; then
+              if [[ "$file" == *"banglejs"* ]]; then
+                mv "$file" "Gadgetbridge-Banglejs.apk" 2>/dev/null || true
+                echo "✅ نسخه Banglejs پیدا شد"
+              elif [[ "$file" == *"mainline"* ]]; then
+                mv "$file" "Gadgetbridge-Mainline.apk" 2>/dev/null || true
+                echo "✅ نسخه Mainline پیدا شد"
+              elif [[ "$file" == *"debug"* ]]; then
+                mv "$file" "Gadgetbridge-Debug.apk" 2>/dev/null || true
+                echo "✅ نسخه Debug پیدا شد"
+              else
+                cp "$file" "Gadgetbridge.apk" 2>/dev/null || true
+              fi
+            fi
+          done
+          
+          echo ""
+          echo "=== فایل‌های آماده برای آپلود ==="
+          ls -la *.apk 2>/dev/null || echo "هیچ فایل APK ای پیدا نشد!"
+      
+      - name: Verify APK files
+        run: |
+          for file in *.apk; do
+            if [[ -f "$file" ]]; then
+              SIZE=$(stat -c%s "$file")
+              echo "📦 $file - حجم: $((SIZE / 1024 / 1024)) MB"
+              if [ $SIZE -lt 1000000 ]; then
+                echo "⚠️ هشدار: حجم $file کمتر از 1 مگابایت است (ممکن است خراب باشد)"
+              fi
+            fi
+          done
+      
+      - name: Commit and Push to Repository
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Gadgetbridge.apk
-          git commit -m "Add Gadgetbridge APK (downloaded via alternative source)" || echo "No changes"
-          git push
+          
+          # اضافه کردن فایل‌های APK
+          git add *.apk 2>/dev/null || echo "No APK files to add"
+          
+          # چک کردن برای commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add Gadgetbridge Debug APK - built on $(date '+%Y-%m-%d %H:%M:%S')"
+            git push
+            echo "✅ فایل‌ها با موفقیت به مخزن اضافه شدند!"
+          fi
+      
+      - name: Show download links
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ لینک‌های دانلود مستقیم:"
+          echo "=========================================="
+          echo ""
+          echo "📱 نسخه Mainline (برای اکثر مچ‌بندها):"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Mainline.apk"
+          echo ""
+          echo "⌚ نسخه Banglejs (مخصوص مچ‌بند Bangle.js):"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Banglejs.apk"
+          echo ""
+          echo "🔧 نسخه Debug (برای تست):"
+          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Debug.apk"
+          echo "=========================================="

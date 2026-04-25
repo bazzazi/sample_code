@@ -1,95 +1,79 @@
-name: Build and Commit APK to Repo
+name: Download APK from F-Droid and Commit to Repo
 
 on:
   workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'لینک دانلود APK از F-Droid'
+        required: true
+        default: 'https://f-droid.org/repo/nodomain.freeyourgadget.gadgetbridge_910.apk'
+        type: string
 
 jobs:
-  build:
+  download:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # اجازه نوشتن در مخزن
     
     steps:
-      - name: Checkout repo (your repository)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Checkout Gadgetbridge source
+      - name: Download APK from F-Droid
         run: |
-          git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git
+          echo "⬇️ دانلود فایل از: ${{ inputs.download_url }}"
+          
+          # دانلود فایل با curl و دنبال کردن ریدایرکت‌ها
+          curl -L -o Gadgetbridge.apk "${{ inputs.download_url }}"
+          
+          # بررسی حجم فایل (باید بیشتر از 1 مگابایت باشد)
+          FILE_SIZE=$(stat -c%s Gadgetbridge.apk)
+          echo "📦 حجم فایل دانلود شده: $((FILE_SIZE / 1024 / 1024)) MB"
+          
+          if [ $FILE_SIZE -lt 1048576 ]; then
+            echo "❌ خطا: حجم فایل خیلی کم است (کمتر از 1 مگابایت)"
+            echo "   احتمالاً لینک اشتباه است یا سرور خطا داده"
+            exit 1
+          fi
+          
+          echo "✅ دانلود با موفقیت انجام شد"
       
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platforms;android-34'
-      
-      - name: Build APK
+      - name: Verify APK file
         run: |
-          cd Gadgetbridge
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-      
-      - name: Find and copy APK files
-        run: |
-          # پیدا کردن همه فایل‌های APK
-          find ./Gadgetbridge -name "*.apk" -type f
+          # بررسی اینکه فایل واقعاً APK است
+          file_type=$(file Gadgetbridge.apk)
+          echo "نوع فایل: $file_type"
           
-          # کپی کردن به ریشه مخزن
-          find ./Gadgetbridge -name "*.apk" -exec cp {} ./ \;
-          
-          # تغییر نام فایل‌ها به نام‌های ساده
-          for file in *.apk; do
-            if [[ -f "$file" ]]; then
-              if [[ "$file" == *"banglejs"* ]]; then
-                mv "$file" "Gadgetbridge-Banglejs.apk" 2>/dev/null || true
-              elif [[ "$file" == *"mainline"* ]]; then
-                mv "$file" "Gadgetbridge-Mainline.apk" 2>/dev/null || true
-              else
-                mv "$file" "Gadgetbridge.apk" 2>/dev/null || true
-              fi
-            fi
-          done
-          
-          echo "=== فایل‌های آماده برای آپلود ==="
-          ls -la *.apk 2>/dev/null || echo "هیچ فایل APK ای پیدا نشد!"
+          if [[ ! "$file_type" == *"Zip archive"* ]] && [[ ! "$file_type" == *"Android"* ]]; then
+            echo "⚠️ هشدار: فایل دانلود شده可能 APK معتبر نیست"
+          fi
       
       - name: Commit and Push to Repository
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # اضافه کردن فایل‌های APK
-          git add *.apk 2>/dev/null || echo "No APK files to add"
+          # اضافه کردن فایل
+          git add Gadgetbridge.apk
           
           # چک کردن برای commit
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "ℹ️ تغییری برای commit وجود ندارد"
           else
-            git commit -m "Add Gadgetbridge APK - built on $(date '+%Y-%m-%d %H:%M:%S')"
+            git commit -m "Download Gadgetbridge APK from F-Droid - $(date '+%Y-%m-%d %H:%M:%S')"
             git push
-            echo "✅ فایل‌ها با موفقیت به مخزن اضافه شدند!"
+            echo "✅ فایل با موفقیت به مخزن اضافه شد!"
           fi
       
-      - name: Show download links
+      - name: Show download link
         run: |
           echo ""
           echo "=========================================="
-          echo "✅ لینک‌های دانلود مستقیم:"
+          echo "✅ لینک دانلود مستقیم:"
           echo "=========================================="
           echo ""
-          echo "نسخه Mainline:"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Mainline.apk"
-          echo ""
-          echo "نسخه Banglejs:"
-          echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge-Banglejs.apk"
-          echo ""
-          echo "نسخه معمولی:"
           echo "https://raw.githubusercontent.com/${{ github.repository }}/main/Gadgetbridge.apk"
+          echo ""
           echo "=========================================="
